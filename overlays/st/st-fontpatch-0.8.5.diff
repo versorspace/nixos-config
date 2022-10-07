@@ -1,0 +1,11 @@
+--- ../config.def.h	2022-08-20 04:45:11.102051947 +0530
++++ config.def.h	2022-08-20 05:10:04.743494032 +0530
+@@ -5,7 +5,7 @@
+  *
+  * font: see http://freedesktop.org/software/fontconfig/fontconfig-user.html
+  */
+-static char *font = "Liberation Mono:pixelsize=12:antialias=true:autohint=true";
++static char *font = "Ubuntu Mono:pixelsize=16:antialias=true:autohint=true";
+ static int borderpx = 2;
+ 
+ /*
