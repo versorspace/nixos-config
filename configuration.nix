@@ -102,7 +102,7 @@
     };
 
     mpv = super.symlinkJoin {
-      name = mpv";
+      name = "mpv";
       paths = [ super.mpv ];
       buildInputs = [ super.makeWrapper ];
       postBuild = ''
