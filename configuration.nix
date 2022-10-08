@@ -100,6 +100,17 @@
 	  --set XDG_CONFIG_HOME /etc/nixos/overlays
       '';
     };
+
+    mpv = super.symlinkJoin {
+      name = mpv";
+      paths = [ super.mpv ];
+      buildInputs = [ super.makeWrapper ];
+      postBuild = ''
+        wrapProgram $out/bin/mpv \
+	  --set XDG_CONFIG_HOME /etc/nixos/overlays
+      '';
+    };
+
   })
   ];
 
