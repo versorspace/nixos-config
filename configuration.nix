@@ -60,11 +60,46 @@
       conf = builtins.readFile ./overlays/slstatus/config.h;
     };
 
-    dwm-alto = super.callPackage ./overlays/scripts/dwm-alto.nix {};
-    dwm-screenshot = super.callPackage ./overlays/scripts/dwm-screenshot.nix {};
+    dwm-alto = super.writers.writeBashBin "dwm-alto.sh" ''
+      ID=`xdotool search --class dwmalto`
+      if ! [[ -z $ID ]];
+      then
+        if xdotool search --onlyvisible --class dwmalto;
+	then
+	  xdotool windowunmap $ID
+	else
+	  xdotool windowmap $ID
+	fi
+      else
+        st -c dwmalto -e tmux
+      fi
+    '';
 
-    inc-volume = super.callPackage ./overlays/scripts/inc-volume.nix {};
-    dec-volume = super.callPackage ./overlays/scripts/dec-volume.nix {};
+    dwm-screenshot = super.writers.writeBashBin "dwm-screenshot.sh" ''
+      maim -s | tee ~/Pictures/$(date +%s).png | xclip -selection clipboard -t image/png
+    '';
+
+    inc-volume = super.writers.writeBashBin "inc-volume.sh" ''
+      pactl -- set-sink-volume "$(pactl -- get-default-sink)" +5%
+      VOL="$(pamixer --get-volume)"
+      notify-send -t 1000 -h int:value:$VOL "VOL:"
+    '';
+
+    dec-volume = super.writers.writeBashBin "dec-volume.sh" ''
+      pactl -- set-sink-volume "$(pactl -- get-default-sink)" -10%
+      VOL="$(pamixer --get-volume)"
+      notify-send -t 1000 -h int:value:$VOL "VOL:"
+    '';
+
+    nsxiv = super.symlinkJoin {
+      name = "nsxiv";
+      paths = [ super.nsxiv ];
+      buildInputs = [ super.makeWrapper ];
+      postBuild = ''
+        wrapProgram $out/bin/nsxiv \
+	  --set XDG_CONFIG_HOME /etc/nixos/overlays
+      '';
+    };
   })
   ];
 
@@ -278,11 +313,11 @@
   # $ nix search wget
 
   environment = {
-    systemPackages = with pkgs; [ wget firefox chromium sx sxiv mpv aria2 fzf
+    systemPackages = with pkgs; [ wget firefox chromium sx nsxiv mpv aria2 fzf
       st maim tdesktop slstatus dunst acpi jq dmenu file picom htop unzip 
       gimp nix-index hsetroot xdotool alsa-utils pulseaudio
       dwm-alto dwm-screenshot libnotify pamixer xorg.xkill killall
-      dec-volume inc-volume tabbed xclip sshfs
+      dec-volume inc-volume xclip sshfs bat parallel
     ];
 
     variables = {
