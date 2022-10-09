@@ -44,6 +44,8 @@
 	./overlays/st/st-glyph-wide-support-boxdraw.diff
 	./overlays/st/st-font2-0.8.5.diff
 	./overlays/st/st-externalpipe-eternal-0.8.3.diff
+	./overlays/st/7672445bab01cb4e861651dc540566ac22e25812.diff
+	# ./overlays/st/st-scrollback-reflow-0.8.5v2.diff
         # ./overlays/st/st-fontpatch-0.8.5.diff
         # ./overlays/st/st-focus-0.8.5-patch_alpha.diff
       ];
@@ -53,7 +55,6 @@
       patches = [
         ./overlays/dwm/dwm-cool-autostart-6.3.diff
         ./overlays/dwm/dwm-moveresize-6.2.diff
-        # ./overlays/dwm/dwm-fontfloat.diff
         ./overlays/dwm/dwm-fullgaps-6.3.diff
       ];
       conf = builtins.readFile ./overlays/dwm/config.h;
@@ -69,41 +70,34 @@
     };
 
     dwm-alto = super.writers.writeBashBin "dwm-alto.sh" ''
-      ID=`xdotool search --class dwmalto`
-      if ! [[ -z $ID ]];
+    ID=`xdotool search --class dwmalto`
+    if ! [[ -z $ID ]];
+    then
+      if xdotool search --onlyvisible --class dwmalto;
       then
-        if xdotool search --onlyvisible --class dwmalto;
-	then
-	  xdotool windowunmap $ID
-	else
-	  xdotool windowmap $ID
-	fi
+        xdotool windowunmap $ID
       else
-        st -c dwmalto -e tmux
+        xdotool windowmap $ID
       fi
+    else
+      st -c dwmalto -e tmux
+    fi
     '';
 
     dwm-screenshot = super.writers.writeBashBin "dwm-screenshot.sh" ''
-      maim -s | tee ~/Pictures/$(date +%s).png | xclip -selection clipboard -t image/png
+    maim -s | tee ~/Pictures/$(date +%s).png | xclip -selection clipboard -t image/png
     '';
 
     inc-volume = super.writers.writeBashBin "inc-volume.sh" ''
-      pactl -- set-sink-volume "$(pactl -- get-default-sink)" +5%
-      VOL="$(pamixer --get-volume)"
-      notify-send -t 1000 -h int:value:$VOL "VOL:"
+    pactl -- set-sink-volume "$(pactl -- get-default-sink)" +5%
+    VOL="$(pamixer --get-volume)"
+    notify-send -t 1000 -h int:value:$VOL "VOL:"
     '';
 
     dec-volume = super.writers.writeBashBin "dec-volume.sh" ''
-      pactl -- set-sink-volume "$(pactl -- get-default-sink)" -10%
-      VOL="$(pamixer --get-volume)"
-      notify-send -t 1000 -h int:value:$VOL "VOL:"
-    '';
-
-    edit-screen = super.writers.writeBashBin "edit-screen.sh" ''
-      tmpfile=$(mktemp /tmp/st-edit.XXXXXX)
-      trap  'rm "$tmpfile"' 0 1 15
-      cat > "$tmpfile"
-      st -c termdumpst -e "$EDITOR" "$tmpfile"
+    pactl -- set-sink-volume "$(pactl -- get-default-sink)" -10%
+    VOL="$(pamixer --get-volume)"
+    notify-send -t 1000 -h int:value:$VOL "VOL:"
     '';
 
     nsxiv = super.symlinkJoin {
@@ -111,8 +105,8 @@
       paths = [ super.nsxiv ];
       buildInputs = [ super.makeWrapper ];
       postBuild = ''
-        wrapProgram $out/bin/nsxiv \
-	  --set XDG_CONFIG_HOME /etc/nixos/overlays
+      wrapProgram $out/bin/nsxiv \
+        --set XDG_CONFIG_HOME /etc/nixos/overlays
       '';
     };
 
@@ -121,15 +115,15 @@
       paths = [ super.mpv ];
       buildInputs = [ super.makeWrapper ];
       postBuild = ''
-        wrapProgram $out/bin/mpv \
-	  --set XDG_CONFIG_HOME /etc/nixos/overlays
+      wrapProgram $out/bin/mpv \
+        --set XDG_CONFIG_HOME /etc/nixos/overlays
       '';
     };
 
   })
   ];
 
-  networking.hostName = "synthesis"; # Define your hostname.
+  networking.hostName = "Synthesis"; # Define your hostname.
   # Pick only one of the below networking options.
   networking.wireless.enable = true;  # Enables wireless support via wpa_supplicant.
   # networking.networkmanager.enable = true;  # Easiest to use and most distros use this by default.
@@ -265,29 +259,42 @@
 
     configure = {
       customRC = ''
-        set mouse-=a
-        colorscheme nightfox
+      set termguicolors
+      set mouse-=a
+      colorscheme nightfox
+      hi Normal guibg=None
+      hi NonText guibg=None
 
-        function CopyDirPath()
-          call system('xclip -i -selection clipboard <<< "\"' . expand('%:p:h') . '"\"')
-          echom trim('CWD: ' . expand('%:p:h') . ' -> (copied to clipboard)')
-        endfunction
+      lua << EOF
+      require'nvim-treesitter.configs'.setup {
+        highlight = {
+          -- `false` will disable the whole extension
+          enable = true,
+          additional_vim_regex_highlighting = false,
+          }
+      }
+      EOF
 
-        nnoremap <Leader>cd :call CopyDirPath()<CR>
-	nnoremap H :tabprev<CR>
-	nnoremap L :tabnext<CR>
+      function CopyDirPath()
+        call system('xclip -i -selection clipboard <<< "\"' . expand('%:p:h') . '"\"')
+        echom trim('CWD: ' . expand('%:p:h') . ' -> (copied to clipboard)')
+      endfunction
 
-        " " Copy to clipboard
-        vnoremap  <leader>y  "+y
-        nnoremap  <leader>Y  "+yg_
-        nnoremap  <leader>y  "+y
-        nnoremap  <leader>yy  "+yy
-        
-        " " Paste from clipboard
-        nnoremap <leader>p "+p
-        nnoremap <leader>P "+P
-        vnoremap <leader>p "+p
-        vnoremap <leader>P "+P
+      nnoremap <Leader>cd :call CopyDirPath()<CR>
+      nnoremap H :tabprev<CR>
+      nnoremap L :tabnext<CR>
+
+      " " Copy to clipboard
+      vnoremap  <leader>y  "+y
+      nnoremap  <leader>Y  "+yg_
+      nnoremap  <leader>y  "+y
+      nnoremap  <leader>yy  "+yy
+      
+      " " Paste from clipboard
+      nnoremap <leader>p "+p
+      nnoremap <leader>P "+P
+      vnoremap <leader>p "+p
+      vnoremap <leader>P "+P
       '';
 
       packages.myVimPackage = with pkgs.vimPlugins; {
@@ -296,12 +303,8 @@
           vim-surround
           nightfox-nvim
           (nvim-treesitter.withPlugins
-            (plugins: with plugins; [
-              tree-sitter-c tree-sitter-bash tree-sitter-lua
-              tree-sitter-markdown tree-sitter-nix tree-sitter-perl
-              tree-sitter-python tree-sitter-vim tree-sitter-java
-              tree-sitter-json tree-sitter-make
-              ]))
+	    (_: pkgs.tree-sitter.allGrammars)
+	  )
         ];
       };
     };
@@ -323,12 +326,14 @@
     promptInit = "source ${pkgs.zsh-powerlevel10k}/share/zsh-powerlevel10k/powerlevel10k.zsh-theme";
 
     shellInit = ''
-      bindkey '^E' end-of-line
-      bindkey '^?' backward-delete-char
+    bindkey '^E' end-of-line
+    bindkey '^?' backward-delete-char
 
-      ggrep () {
-        grep -vnriI "^$" *  | fzf --delimiter : --preview='bat --style=full --color=always {1} --highlight-line={2} {3..}' --preview-window '~3,+{2}+3/2'
-      }
+    alias xclipco='xclip -o -selection clipboard'
+
+    ggrep () {
+      grep -vnriI "^$" *  | fzf --delimiter : --preview='bat --style=full --color=always {1} --highlight-line={2} {3..}' --preview-window '~3,+{2}+3/2'
+    }
     '';
 
     enableCompletion = true;
@@ -339,7 +344,7 @@
   };
 
   nix.extraOptions = ''
-    experimental-features = nix-command
+  experimental-features = nix-command
   '';
 
   security.rtkit.enable = true;
@@ -363,7 +368,6 @@
       liberation_ttf
       ubuntu_font_family
       meslo-lgs-nf
-      rPackages.fontawesome
     ];
   };
 
@@ -376,7 +380,7 @@
       gimp nix-index hsetroot xdotool alsa-utils pulseaudio
       dwm-alto dwm-screenshot libnotify pamixer xorg.xkill killall
       dec-volume inc-volume xclip sshfs bat parallel
-      zsh-powerlevel10k edit-screen
+      zsh-powerlevel10k
     ];
 
     variables = {

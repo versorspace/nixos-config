@@ -218,7 +218,7 @@ static MouseShortcut mshortcuts[] = {
 #define MODKEY Mod1Mask
 #define TERMMOD (ControlMask|ShiftMask)
 
-static char *editscreen[] = { "edit-screen.sh", NULL };
+static char *termclip[] = { "xclip", "-i", "-selection", "clipboard" , NULL };
 
 static Shortcut shortcuts[] = {
 	/* mask                 keysym          function        argument */
@@ -241,7 +241,7 @@ static Shortcut shortcuts[] = {
 	{ ControlMask,          XK_j,   	kscrolldown,    {.i =  1} },
 	{ TERMMOD,          	XK_K,     	kscrollup,      {.i = -1} },
 	{ TERMMOD,          	XK_J,   	kscrolldown,    {.i = -1} },
-	{ TERMMOD,		XK_U,		externalpipe,	{ .v = editscreen } },
+	{ Mod4Mask,		XK_o,		externalpipe,	{ .v = termclip } },
 };
 
 /*
