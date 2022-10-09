@@ -29,14 +29,22 @@
 
   nixpkgs.overlays = [ (self: super: {
     st = super.st.override {
+      conf = builtins.readFile ./overlays/st/config.h;
       patches = [
         ./overlays/st/st-externalpipe-0.8.4.diff
         ./overlays/st/st-newterm-extpipecompat.diff
+	./overlays/st/st-scrollback-0.8.5.diff
+	./overlays/st/st-scrollback-mouse-20220127-2c5edf2.diff
+	./overlays/st/st-scrollback-mouse-altscreen-20220127-2c5edf2.diff
         ./overlays/st/st-alpha-20220206-0.8.5.diff
         ./overlays/st/st-anysize-20220718-baa9357.diff
         ./overlays/st/st-bold-is-not-bright-20190127-3be4cf1.diff
         ./overlays/st/st-ubuntu-0.8.5-alpha.diff
-        ./overlays/st/st-fontpatch-0.8.5.diff
+	./overlays/st/st-boxdraw_v2.1-0.8.5.diff
+	./overlays/st/st-glyph-wide-support-boxdraw.diff
+	./overlays/st/st-font2-0.8.5.diff
+	./overlays/st/st-externalpipe-eternal-0.8.3.diff
+        # ./overlays/st/st-fontpatch-0.8.5.diff
         # ./overlays/st/st-focus-0.8.5-patch_alpha.diff
       ];
     };
@@ -89,6 +97,13 @@
       pactl -- set-sink-volume "$(pactl -- get-default-sink)" -10%
       VOL="$(pamixer --get-volume)"
       notify-send -t 1000 -h int:value:$VOL "VOL:"
+    '';
+
+    edit-screen = super.writers.writeBashBin "edit-screen.sh" ''
+      tmpfile=$(mktemp /tmp/st-edit.XXXXXX)
+      trap  'rm "$tmpfile"' 0 1 15
+      cat > "$tmpfile"
+      st -c termdumpst -e "$EDITOR" "$tmpfile"
     '';
 
     nsxiv = super.symlinkJoin {
@@ -185,7 +200,7 @@
 
   programs.tmux = {
     enable = true;
-    # keyMode = "vi";
+    keyMode = "vi";
     extraConfig = ''
       # For the true color supposed to work
       set -g default-terminal "screen-256color"
@@ -251,17 +266,43 @@
     configure = {
       customRC = ''
         set mouse-=a
+        colorscheme nightfox
 
         function CopyDirPath()
           call system('xclip -i -selection clipboard <<< "\"' . expand('%:p:h') . '"\"')
           echom trim('CWD: ' . expand('%:p:h') . ' -> (copied to clipboard)')
         endfunction
+
         nnoremap <Leader>cd :call CopyDirPath()<CR>
+	nnoremap H :tabprev<CR>
+	nnoremap L :tabnext<CR>
+
+        " " Copy to clipboard
+        vnoremap  <leader>y  "+y
+        nnoremap  <leader>Y  "+yg_
+        nnoremap  <leader>y  "+y
+        nnoremap  <leader>yy  "+yy
+        
+        " " Paste from clipboard
+        nnoremap <leader>p "+p
+        nnoremap <leader>P "+P
+        vnoremap <leader>p "+p
+        vnoremap <leader>P "+P
       '';
 
       packages.myVimPackage = with pkgs.vimPlugins; {
         # launch on start
-        start = [ vim-surround ];
+        start = [
+          vim-surround
+          nightfox-nvim
+          (nvim-treesitter.withPlugins
+            (plugins: with plugins; [
+              tree-sitter-c tree-sitter-bash tree-sitter-lua
+              tree-sitter-markdown tree-sitter-nix tree-sitter-perl
+              tree-sitter-python tree-sitter-vim tree-sitter-java
+              tree-sitter-json tree-sitter-make
+              ]))
+        ];
       };
     };
   };
@@ -274,10 +315,14 @@
       "SHARE_HISTORY"
       "HIST_FCNTL_LOCK"
       "AUTO_CD"
+      "INTERACTIVE_COMMENTS"
+      "VI"
+      "AUTO_MENU"
     ];
 
+    promptInit = "source ${pkgs.zsh-powerlevel10k}/share/zsh-powerlevel10k/powerlevel10k.zsh-theme";
+
     shellInit = ''
-      set -o vi
       bindkey '^E' end-of-line
       bindkey '^?' backward-delete-char
 
@@ -317,6 +362,8 @@
       inconsolata
       liberation_ttf
       ubuntu_font_family
+      meslo-lgs-nf
+      rPackages.fontawesome
     ];
   };
 
@@ -329,6 +376,7 @@
       gimp nix-index hsetroot xdotool alsa-utils pulseaudio
       dwm-alto dwm-screenshot libnotify pamixer xorg.xkill killall
       dec-volume inc-volume xclip sshfs bat parallel
+      zsh-powerlevel10k edit-screen
     ];
 
     variables = {

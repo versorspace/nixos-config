@@ -41,8 +41,10 @@ static const Rule rules[] = {
 	{ "Firefox",  NULL,       NULL,       1 << 8,       0,           -1 },
 	{ NULL,  	  NULL,       "pyside6eg",0,            1,           -1 },
 	{ "Sxiv",     NULL,       NULL,       0,            1,           -1 },
+	{ "nsxiv",     NULL,       NULL,       0,            1,           -1 },
 	{ "vimnotes", NULL,       NULL,       0,            1,           -1 },
 	{ "dwmalto",  NULL,       NULL,       0,            1,           -1 },
+	{ "termdumpst",  NULL,       NULL,       0,            1,           -1 },
 	{ NULL,  NULL,       "dwmalto",       0,            1,           -1 },
 	{ "tmuxmusic", NULL,       NULL,       0,            1,           -1 },
 };
@@ -74,7 +76,8 @@ static const Layout layouts[] = {
 /* commands */
 static char dmenumon[2] = "0"; /* component of dmenucmd, manipulated in spawn() */
 static const char *dmenucmd[] = { "dmenu_run", "-m", dmenumon, "-fn", dmenufont, "-nb", col_gray1, "-nf", col_gray3, "-sb", col_cyan, "-sf", col_gray4, NULL };
-static const char *termcmd[]  = { "st", "-e", "tmux", NULL };
+// static const char *termcmd[]  = { "st", "-e", "tmux", NULL };
+static const char *termcmd[]  = { "st", NULL };
 static const char *dwmalto[]  = { "dwm-alto.sh", NULL };
 static const char *dwmscreenshot[]  = { "dwm-screenshot.sh", NULL };
 static const char *incvol[]  = { "inc-volume.sh", NULL };
