@@ -45,6 +45,8 @@
 	./overlays/st/st-font2-0.8.5.diff
 	./overlays/st/st-externalpipe-eternal-0.8.3.diff
 	./overlays/st/7672445bab01cb4e861651dc540566ac22e25812.diff
+	./overlays/st/st-autocomplete-0.8.5.diff
+	# ./overlays/st/st-0.8.5-autocomplete-20220327-230120.diff
 	# ./overlays/st/st-scrollback-reflow-0.8.5v2.diff
         # ./overlays/st/st-fontpatch-0.8.5.diff
         # ./overlays/st/st-focus-0.8.5-patch_alpha.diff
@@ -98,6 +100,12 @@
     pactl -- set-sink-volume "$(pactl -- get-default-sink)" -10%
     VOL="$(pamixer --get-volume)"
     notify-send -t 1000 -h int:value:$VOL "VOL:"
+    '';
+
+    pm = super.writers.writeBashBin "pm.sh" ''
+    cd /media/Music
+    find ./ -regextype posix-extended -iregex '.*\.(mp3|flac|m4a)' | fzf --height ''${FZF_TMUX_HEIGHT:-40%} |
+      sort | uniq | xargs -r -d '\n' mpv --audio-display=no
     '';
 
     nsxiv = super.symlinkJoin {
@@ -191,6 +199,7 @@
     
     shell = "/run/current-system/sw/bin/zsh";
   };
+  users.users.root.shell = "/run/current-system/sw/bin/zsh";
 
   programs.tmux = {
     enable = true;
@@ -248,6 +257,11 @@
         name = "versorspace";
         email = "resoaxes@gmail.com";
       };
+      safe = {
+        directory = [
+	  "/etc/nixos"
+	];
+      };
     };
   };
 
@@ -260,10 +274,9 @@
     configure = {
       customRC = ''
       set termguicolors
-      set mouse-=a
       colorscheme nightfox
-      hi Normal guibg=None
-      hi NonText guibg=None
+      "hi Normal guibg=None
+      "hi NonText guibg=None
 
       lua << EOF
       require'nvim-treesitter.configs'.setup {
@@ -284,17 +297,20 @@
       nnoremap H :tabprev<CR>
       nnoremap L :tabnext<CR>
 
-      " " Copy to clipboard
-      vnoremap  <leader>y  "+y
-      nnoremap  <leader>Y  "+yg_
-      nnoremap  <leader>y  "+y
-      nnoremap  <leader>yy  "+yy
-      
-      " " Paste from clipboard
-      nnoremap <leader>p "+p
-      nnoremap <leader>P "+P
-      vnoremap <leader>p "+p
-      vnoremap <leader>P "+P
+      " " " Copy to clipboard
+      vnoremap  <C-c>  "+y
+      vnoremap  cy  "+y
+      " nnoremap  <leader>Y  "+yg_
+      " nnoremap  <leader>y  "+y
+      " nnoremap  <leader>yy  "+yy
+      " 
+      " " " Paste from clipboard
+      " nnoremap <leader>p "+p
+      " nnoremap <leader>P "+P
+      " vnoremap <leader>p "+p
+      " vnoremap <leader>P "+P
+
+      set mouse-=a
       '';
 
       packages.myVimPackage = with pkgs.vimPlugins; {
@@ -310,37 +326,92 @@
     };
   };
 
+
   programs.zsh = {
     enable = true;
-
-    setOptions = [
-      "HIST_IGNORE_DUPS"
-      "SHARE_HISTORY"
-      "HIST_FCNTL_LOCK"
-      "AUTO_CD"
-      "INTERACTIVE_COMMENTS"
-      "VI"
-      "AUTO_MENU"
-    ];
-
-    promptInit = "source ${pkgs.zsh-powerlevel10k}/share/zsh-powerlevel10k/powerlevel10k.zsh-theme";
-
-    shellInit = ''
-    bindkey '^E' end-of-line
-    bindkey '^?' backward-delete-char
+    # promptInit = "source ${pkgs.zsh-powerlevel10k}/share/zsh-powerlevel10k/powerlevel10k.zsh-theme";
+    interactiveShellInit = ''
+    source ${pkgs.grml-zsh-config}/etc/zsh/zshrc
 
     alias xclipco='xclip -o -selection clipboard'
+    alias vim=nvim
+    setopt vi
+    export HISTSIZE=100000
+    bindkey -v '^?' backward-delete-char
 
-    ggrep () {
-      grep -vnriI "^$" *  | fzf --delimiter : --preview='bat --style=full --color=always {1} --highlight-line={2} {3..}' --preview-window '~3,+{2}+3/2'
+    function venvns {
+        if ! [[ -z $VIRTUAL_ENV ]];
+        then
+            # REPLY="(""$(basename "''${VIRTUAL_ENV}")"") "
+            REPLY="(""''${VIRTUAL_ENV##*/}"")"" "
+        fi
     }
+
+    function +vi-git-untracked() {
+    	emulate -L zsh
+        if [[ -n $(git ls-files --exclude-standard --others 2> /dev/null) ]];
+        then
+        	hook_com[unstaged]+="%F{12}"
+        fi
+    }
+
+    function git_pushable() {
+    	setopt localoptions noshwordsplit
+    	if git rev-list --count "origin/$(git rev-parse --abbrev-ref HEAD 2>/dev/null).." > /dev/null 2>&1;
+        then
+    		RESULT=$(git rev-list --count "origin/$(git rev-parse --abbrev-ref HEAD 2>/dev/null).." | sed 's/[1-9][0-9]*/ ↯/;s/[0-9]//' | tr -d '\n')
+        	REPLY="%B%F{11}''${RESULT}%f%b"
+    	fi
+    }
+
+    function userns() {
+    	if ((EUID == 0 ));
+        then
+        	REPLY="%B%F{1}%n%f%b"
+        else
+        	REPLY="%B%F{12}%n%f%b"
+        fi
+    }
+
+    autoload -Uz vcs_info
+    zstyle ':vcs_info:*' enable git
+    zstyle ':vcs_info:*' check-for-changes true
+    zstyle ':vcs_info:*' stagedstr "%F{3}"
+    zstyle ':vcs_info:*' unstagedstr "%F{1}"
+    zstyle ':vcs_info:*' use-simple true
+    zstyle ':vcs_info:git+set-message:*' hooks git-untracked
+    zstyle ':vcs_info:git*:*' formats '%F{2}%u%c%m%b%f'
+    zstyle ':vcs_info:git*:*' actionformats '%u%c%m%b/%a' # default ' (%s)-[%b|%a]%c%u-'
+
+    grml_theme_add_token pushable -f git_pushable
+    grml_theme_add_token userns -f userns
+    grml_theme_add_token venvns -f venvns '%B%F{7}' '%b%f'
+    # grml_theme_add_token daytime '%K{240}[%D{%a %b %d} %T]' '%F{white}' '%f%k'
+    grml_theme_add_token datetime '%D{%a %b %d} %T' '[%F{257}' '%f] '
+    grml_theme_add_token datens '%D{%a %b %d}' '%F{257}' '%f '
+    grml_theme_add_token timens '%D{%T}' '%F{257}' '%f '
+    grml_theme_add_token hostns '%M' '%F{257}' '%f '
+    # grml_theme_add_token pathns '%/' '%U%F{11}' '%f%u '
+    grml_theme_add_token pathns '%~' '%F{3}' '%f '
+    grml_theme_add_token curdir '%1~' '%B%F{4}' '%f%b '
+    grml_theme_add_token dollar '$' '%F{257}' '%f '
+
+    zstyle ':prompt:grml:left:setup' items datens curdir userns at hostns newline timens venvns rc dollar
+
+    zstyle ':prompt:grml:right:setup' items vcs pushable
+
+    function preexec () {
+      echo -ne "\033]0;$PWD \$: $history[$(print -P %h)]\a"
+    }
+    
+    function precmd () {
+      echo -ne "\033]0;$TERM\a"
+      #vcs_info
+    }
+
     '';
 
-    enableCompletion = true;
-    autosuggestions.enable = true;
-    autosuggestions.async = true;
-    syntaxHighlighting.enable = true;
-    histSize = 100000;
+    promptInit = "";
   };
 
   nix.extraOptions = ''
@@ -379,8 +450,7 @@
       st maim tdesktop slstatus dunst acpi jq dmenu file picom htop unzip 
       gimp nix-index hsetroot xdotool alsa-utils pulseaudio
       dwm-alto dwm-screenshot libnotify pamixer xorg.xkill killall
-      dec-volume inc-volume xclip sshfs bat parallel
-      zsh-powerlevel10k
+      dec-volume inc-volume xclip sshfs bat parallel pm perl
     ];
 
     variables = {
